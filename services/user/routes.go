@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/aarav345/ecom-go/config"
 	"github.com/aarav345/ecom-go/services/auth"
 	"github.com/aarav345/ecom-go/types"
 	"github.com/aarav345/ecom-go/utils"
@@ -48,7 +49,15 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.WriteJSON(w, http.StatusOK, map[string]string{"token": ""})
+	secret := []byte(config.Envs.JWTSecret)
+	token, err := auth.CreateJWT(secret, user.ID)
+
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	utils.WriteJSON(w, http.StatusOK, map[string]string{"token": token})
 
 }
 
