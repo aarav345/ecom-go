@@ -1,10 +1,12 @@
 package auth
 
 import (
+	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/aarav345/ecom-go/config"
+	"github.com/aarav345/ecom-go/types"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -22,4 +24,8 @@ func CreateJWT(secret []byte, userID int) (string, error) {
 	}
 
 	return tokenString, nil
+}
+
+func WithJWTAuth(handlerFunc http.HandlerFunc, store types.UserStore) http.HandlerFunc {
+
 }
