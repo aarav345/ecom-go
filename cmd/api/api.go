@@ -5,6 +5,8 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/aarav345/ecom-go/services/cart"
+	"github.com/aarav345/ecom-go/services/order"
 	"github.com/aarav345/ecom-go/services/product"
 	"github.com/aarav345/ecom-go/services/user"
 	"github.com/gorilla/mux"
@@ -33,6 +35,11 @@ func (s *ApiServer) Run() error {
 	productStore := product.NewStore(s.db)
 	productHandler := product.NewHandler(productStore)
 	productHandler.RegisterRoutes(subrouter)
+
+	orderStore := order.NewStore(s.db)
+
+	cartHandler := cart.NewHandler(orderStore, productStore, userStore)
+	cartHandler.RegisterRoutes(subrouter)
 
 	log.Println("Listening on", s.addr)
 	return http.ListenAndServe(s.addr, router)
