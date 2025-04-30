@@ -2,8 +2,6 @@ package product
 
 import (
 	"database/sql"
-	"fmt"
-	"strings"
 
 	"github.com/aarav345/ecom-go/types"
 )
@@ -18,13 +16,19 @@ func NewStore(db *sql.DB) *Store {
 	}
 }
 
-func (s *Store) GetProducts() ([]types.Product, error) {
-	rows, err := s.db.Query("SELECT * FROM products")
+func (s *Store) GetProducts() ([]types.ProductWithInventory, error) {
+	rows, err := s.db.Query(`
+	SELECT p.id, p.name, p.description, p.image, p.price,
+	COALESCE(i.quantity, 0) 
+	FROM products as p 
+	LEFT JOIN inventory as i 
+	ON p.id = i.product_id`)
+
 	if err != nil {
 		return nil, err
 	}
 
-	var products []types.Product
+	var products []types.ProductWithInventory
 	for rows.Next() {
 		p, err := scanRowIntoProduct(rows)
 		if err != nil {
@@ -38,39 +42,58 @@ func (s *Store) GetProducts() ([]types.Product, error) {
 }
 
 func (s *Store) GetProductsByID(productIDs []int) ([]types.Product, error) {
-	placeholders := strings.Repeat(",?", len(productIDs)-1)
-	query := fmt.Sprintf("SELECT * FROM products WHERE id IN (?%s)", placeholders)
+	// placeholders := strings.Repeat(",?", len(productIDs)-1)
+	// query := fmt.Sprintf("SELECT * FROM products WHERE id IN (?%s)", placeholders)
 
-	args := make([]interface{}, len(productIDs))
-	for i, v := range productIDs {
-		args[i] = v
-	}
+	// args := make([]interface{}, len(productIDs))
+	// for i, v := range productIDs {
+	// 	args[i] = v
+	// }
 
-	rows, err := s.db.Query(query, args...)
-	if err != nil {
-		return nil, err
-	}
+	// rows, err := s.db.Query(query, args...)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	products := []types.Product{}
-	for rows.Next() {
-		p, err := scanRowIntoProduct(rows)
-		if err != nil {
-			return nil, err
-		}
+	// for rows.Next() {
+	// 	p, err := scanRowIntoProduct(rows)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
 
-		products = append(products, *p)
-	}
+	// 	products = append(products, *p)
+	// }
 
 	return products, nil
 }
 
-func (s *Store) UpdateProduct(product types.Product) error {
-	_, err := s.db.Exec("UPDATE products SET name = ?, price = ?, image = ?, description = ?, quantity = ? WHERE id = ?", product.Name, product.Price, product.Image, product.Description, product.Quantity, product.ID)
-	return err
+func (s *Store) UpdateProduct(product types.Product, quantity int, updateProductFields bool) error {
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+
+	if updateProductFields {
+		_, err := tx.Exec("UPDATE products SET name = ?, price = ?, image = ?, description = ? WHERE id = ?", product.Name, product.Price, product.Image, product.Description, product.ID)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	_, err = tx.Exec("UPDATE invertory SET quantity = ? WHERE product_id = ?", quantity, product.ID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
 }
 
-func scanRowIntoProduct(rows *sql.Rows) (*types.Product, error) {
-	product := new(types.Product)
+func scanRowIntoProduct(rows *sql.Rows) (*types.ProductWithInventory, error) {
+	product := new(types.ProductWithInventory)
 
 	if err := rows.Scan(
 		&product.ID,

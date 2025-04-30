@@ -30,9 +30,9 @@ type User struct {
 }
 
 type ProductStore interface {
-	GetProducts() ([]Product, error)
-	GetProductsByID(ps []int) ([]Product, error)
-	UpdateProduct(Product) error
+	GetProducts() ([]ProductWithInventory, error)
+	GetProductsByID(ps []int) ([]ProductWithInventory, error)
+	UpdateProduct(Product, quantity int, updateProductFields bool) error
 }
 
 type Product struct {
@@ -41,8 +41,17 @@ type Product struct {
 	Description string    `json:"description"`
 	Image       string    `json:"image"`
 	Price       float64   `json:"price"`
-	Quantity    int       `json:"quantity"`
 	CreatedAt   time.Time `json:"created_at"`
+}
+
+type Inventory struct {
+	ProductID int `json:"product_id"`
+	Quantity  int `json:"quantity"`
+}
+
+type ProductWithInventory struct {
+	Product   `json:"product"`
+	Inventory `json:"inventory"`
 }
 
 type OrderStore interface {
