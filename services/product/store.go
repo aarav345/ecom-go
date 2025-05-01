@@ -2,6 +2,8 @@ package product
 
 import (
 	"database/sql"
+	"fmt"
+	"strings"
 
 	"github.com/aarav345/ecom-go/types"
 )
@@ -41,34 +43,35 @@ func (s *Store) GetProducts() ([]types.ProductWithInventory, error) {
 	return products, nil
 }
 
-func (s *Store) GetProductsByID(productIDs []int) ([]types.Product, error) {
-	// placeholders := strings.Repeat(",?", len(productIDs)-1)
-	// query := fmt.Sprintf("SELECT * FROM products WHERE id IN (?%s)", placeholders)
+func (s *Store) GetProductsByID(productIDs []int) ([]types.ProductWithInventory, error) {
+	placeholders := strings.Repeat(",?", len(productIDs)-1)
 
-	// args := make([]interface{}, len(productIDs))
-	// for i, v := range productIDs {
-	// 	args[i] = v
-	// }
+	query := fmt.Sprintf("SELECT p.id, p.name, p.description, p.image, p.price, p.created_at, i.quantity FROM products as p LEFT JOIN inventory as i on p.id = i.product_id WHERE id IN (?%s)", placeholders)
 
-	// rows, err := s.db.Query(query, args...)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	args := make([]interface{}, len(productIDs))
+	for i, v := range productIDs {
+		args[i] = v
+	}
 
-	products := []types.Product{}
-	// for rows.Next() {
-	// 	p, err := scanRowIntoProduct(rows)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
+	rows, err := s.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
 
-	// 	products = append(products, *p)
-	// }
+	products := []types.ProductWithInventory{}
+	for rows.Next() {
+		p, err := scanRowIntoProduct(rows)
+		if err != nil {
+			return nil, err
+		}
+
+		products = append(products, *p)
+	}
 
 	return products, nil
 }
 
-func (s *Store) UpdateProduct(product types.Product, quantity int, updateProductFields bool) error {
+func (s *Store) UpdateProduct(product types.ProductWithInventory, updateProductFields bool) error {
 
 	tx, err := s.db.Begin()
 	if err != nil {
@@ -83,7 +86,7 @@ func (s *Store) UpdateProduct(product types.Product, quantity int, updateProduct
 		}
 	}
 
-	_, err = tx.Exec("UPDATE invertory SET quantity = ? WHERE product_id = ?", quantity, product.ID)
+	_, err = tx.Exec("UPDATE inventory SET quantity = ? WHERE product_id = ?", product.Quantity, product.ID)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -101,8 +104,8 @@ func scanRowIntoProduct(rows *sql.Rows) (*types.ProductWithInventory, error) {
 		&product.Description,
 		&product.Image,
 		&product.Price,
-		&product.Quantity,
 		&product.CreatedAt,
+		&product.Quantity,
 	); err != nil {
 		return nil, err
 	}

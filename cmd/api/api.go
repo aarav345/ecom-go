@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/aarav345/ecom-go/services/cart"
+	"github.com/aarav345/ecom-go/services/history"
 	"github.com/aarav345/ecom-go/services/order"
 	"github.com/aarav345/ecom-go/services/product"
 	"github.com/aarav345/ecom-go/services/user"
@@ -37,8 +38,9 @@ func (s *ApiServer) Run() error {
 	productHandler.RegisterRoutes(subrouter)
 
 	orderStore := order.NewStore(s.db)
+	historyStore := history.NewStore(s.db)
 
-	cartHandler := cart.NewHandler(orderStore, productStore, userStore)
+	cartHandler := cart.NewHandler(orderStore, productStore, userStore, historyStore)
 	cartHandler.RegisterRoutes(subrouter)
 
 	log.Println("Listening on", s.addr)

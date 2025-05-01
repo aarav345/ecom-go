@@ -15,13 +15,12 @@ func getCardItemIDs(items []types.CartItem) ([]int, error) {
 
 		productIDs[i] = item.ProductID
 	}
-
 	return productIDs, nil
 }
 
-func (h *Handler) createOrder(ps []types.Product, items []types.CartItem, userID int) (int, float64, error) {
+func (h *Handler) createOrder(ps []types.ProductWithInventory, items []types.CartItem, userID int, updateProductFields bool) (int, float64, error) {
 
-	productMap := make(map[int]types.Product)
+	productMap := make(map[int]types.ProductWithInventory)
 	for _, product := range ps {
 		productMap[product.ID] = product
 	}
@@ -33,13 +32,12 @@ func (h *Handler) createOrder(ps []types.Product, items []types.CartItem, userID
 	// calculate the total price
 
 	totalPrice := calculateTotalPrice(items, productMap)
-	// reduce quantity of the products in our db
 
+	// reduce quantity of the products in our db
 	for _, item := range items {
 		product := productMap[item.ProductID]
 		product.Quantity -= item.Quantity
-
-		h.productStore.UpdateProduct(product)
+		h.productStore.UpdateProduct(product, updateProductFields)
 	}
 
 	// create the order
@@ -67,7 +65,7 @@ func (h *Handler) createOrder(ps []types.Product, items []types.CartItem, userID
 	return orderID, totalPrice, nil
 }
 
-func calculateTotalPrice(cartItem []types.CartItem, products map[int]types.Product) float64 {
+func calculateTotalPrice(cartItem []types.CartItem, products map[int]types.ProductWithInventory) float64 {
 	var totalPrice float64
 	for _, item := range cartItem {
 		product := products[item.ProductID]
@@ -77,7 +75,7 @@ func calculateTotalPrice(cartItem []types.CartItem, products map[int]types.Produ
 	return totalPrice
 }
 
-func checkIfCartIsInStock(cartItems []types.CartItem, products map[int]types.Product) error {
+func checkIfCartIsInStock(cartItems []types.CartItem, products map[int]types.ProductWithInventory) error {
 	if len(cartItems) == 0 {
 		return fmt.Errorf("cart is empty")
 	}
